@@ -5,7 +5,6 @@ import 'react-pdf/dist/Page/TextLayer.css'
 import { useStore, selectActiveDocument, selectCurrentAnnotations } from '@/store'
 import { AnnotationLayer } from './AnnotationLayer'
 import { PageNav } from './PageNav'
-import { v4 as uuidv4 } from 'uuid'
 import type { Point, Annotation } from '@/types'
 
 pdfjs.GlobalWorkerOptions.workerSrc = new URL(
@@ -20,46 +19,33 @@ export function CanvasArea() {
   const [isDragging, setIsDragging] = useState(false)
   const [dragStart, setDragStart] = useState<Point | null>(null)
   const [drawingAnnotation, setDrawingAnnotation] = useState<Partial<Annotation> | null>(null)
-  const panOffset = useRef({ x: 0, y: 0 })
   const lastPan = useRef<Point | null>(null)
 
   const {
-    activeTool,
-    activeColor,
-    activeOpacity,
-    activeStrokeWidth,
-    zoom,
-    currentPage,
-    setCurrentPage,
-    addAnnotation,
-    setZoom,
-    activeDocumentId,
+    activeTool, activeColor, activeOpacity, activeStrokeWidth,
+    zoom, currentPage, setCurrentPage, addAnnotation, setZoom,
   } = useStore()
 
   const activeDoc = useStore(selectActiveDocument)
   const annotations = useStore(selectCurrentAnnotations)
 
-  const onDocumentLoadSuccess = useCallback(({ numPages }: { numPages: number }) => {
-    setNumPages(numPages)
+  const onDocumentLoadSuccess = useCallback(({ numPages: n }: { numPages: number }) => {
+    setNumPages(n)
     if (activeDoc) {
-      useStore.setState(s => ({
-        documents: s.documents.map(d =>
-          d.id === activeDoc.id ? { ...d, pageCount: numPages } : d
-        )
+      useStore.setState((s) => ({
+        documents: s.documents.map((d) => d.id === activeDoc.id ? { ...d, pageCount: n } : d),
       }))
     }
   }, [activeDoc])
 
-  const onPageLoadSuccess = useCallback((page: any) => {
+  const onPageLoadSuccess = useCallback((page: { width: number; height: number }) => {
     setPageSize({ width: page.width, height: page.height })
   }, [])
 
-  // Wheel zoom
   const handleWheel = useCallback((e: WheelEvent) => {
     if (e.ctrlKey || e.metaKey) {
       e.preventDefault()
-      const delta = e.deltaY > 0 ? -0.1 : 0.1
-      setZoom(zoom + delta)
+      setZoom(zoom + (e.deltaY > 0 ? -0.1 : 0.1))
     }
   }, [zoom, setZoom])
 
@@ -71,88 +57,55 @@ export function CanvasArea() {
   }, [handleWheel])
 
   const getPagePoint = (e: React.MouseEvent): Point => {
-    const pageEl = containerRef.current?.querySelector('.react-pdf__Page') as HTMLElement
+    const pageEl = (containerRef.current?.querySelector('.react-pdf__Page') ?? containerRef.current?.querySelector('img')) as HTMLElement | null
     if (!pageEl) return { x: 0, y: 0 }
     const rect = pageEl.getBoundingClientRect()
-    return {
-      x: (e.clientX - rect.left) / zoom,
-      y: (e.clientY - rect.top) / zoom,
-    }
+    return { x: (e.clientX - rect.left) / zoom, y: (e.clientY - rect.top) / zoom }
   }
 
   const handleMouseDown = (e: React.MouseEvent) => {
+    if (e.button !== 0) return
     if (activeTool === 'pan') {
       lastPan.current = { x: e.clientX, y: e.clientY }
       setIsDragging(true)
       return
     }
-    if (activeTool === 'select') return
-
+    if (activeTool === 'select' || activeTool === 'eraser') return
     const pt = getPagePoint(e)
     setDragStart(pt)
     setIsDragging(true)
-
     if (activeTool === 'note') {
-      addAnnotation({
-        type: 'note',
-        pageNumber: currentPage,
-        color: activeColor,
-        opacity: 1,
-        position: pt,
-        text: '',
-        isOpen: true,
-        author: 'User',
-      })
+      addAnnotation({ type: 'note', pageNumber: currentPage, color: activeColor, opacity: 1, position: pt, text: '', isOpen: true } as Omit<Annotation, 'id' | 'createdAt' | 'updatedAt'>)
       setIsDragging(false)
+      setDragStart(null)
     }
   }
 
   const handleMouseMove = (e: React.MouseEvent) => {
     if (!isDragging) return
-
     if (activeTool === 'pan' && lastPan.current) {
-      const dx = e.clientX - lastPan.current.x
-      const dy = e.clientY - lastPan.current.y
       if (containerRef.current) {
-        containerRef.current.scrollLeft -= dx
-        containerRef.current.scrollTop -= dy
+        containerRef.current.scrollLeft -= e.clientX - lastPan.current.x
+        containerRef.current.scrollTop -= e.clientY - lastPan.current.y
       }
       lastPan.current = { x: e.clientX, y: e.clientY }
       return
     }
-
     if (!dragStart) return
     const pt = getPagePoint(e)
-
     if (activeTool === 'rectangle' || activeTool === 'ellipse') {
       setDrawingAnnotation({
         type: activeTool,
-        rect: {
-          x: Math.min(dragStart.x, pt.x),
-          y: Math.min(dragStart.y, pt.y),
-          width: Math.abs(pt.x - dragStart.x),
-          height: Math.abs(pt.y - dragStart.y),
-        },
-        color: activeColor,
-        opacity: activeOpacity,
-        strokeWidth: activeStrokeWidth,
+        rect: { x: Math.min(dragStart.x, pt.x), y: Math.min(dragStart.y, pt.y), width: Math.abs(pt.x - dragStart.x), height: Math.abs(pt.y - dragStart.y) },
+        color: activeColor, opacity: activeOpacity, strokeWidth: activeStrokeWidth,
       })
     } else if (activeTool === 'arrow') {
-      setDrawingAnnotation({
-        type: 'arrow',
-        start: dragStart,
-        end: pt,
-        color: activeColor,
-        opacity: activeOpacity,
-        strokeWidth: activeStrokeWidth,
-      })
+      setDrawingAnnotation({ type: 'arrow', start: dragStart, end: pt, color: activeColor, opacity: activeOpacity, strokeWidth: activeStrokeWidth })
     } else if (activeTool === 'freehand') {
-      setDrawingAnnotation(prev => ({
+      setDrawingAnnotation((prev) => ({
         type: 'freehand',
-        points: [...((prev as any)?.points ?? [dragStart]), pt],
-        color: activeColor,
-        opacity: activeOpacity,
-        strokeWidth: activeStrokeWidth,
+        points: [...((prev as { points?: Point[] })?.points ?? [dragStart]), pt],
+        color: activeColor, opacity: activeOpacity, strokeWidth: activeStrokeWidth,
       }))
     }
   }
@@ -161,85 +114,40 @@ export function CanvasArea() {
     if (!isDragging) return
     setIsDragging(false)
     lastPan.current = null
-
     if (drawingAnnotation && dragStart) {
-      if (activeTool === 'rectangle' || activeTool === 'ellipse') {
-        const ann = drawingAnnotation as any
-        if (ann.rect?.width > 4 && ann.rect?.height > 4) {
-          addAnnotation({
-            type: activeTool,
-            pageNumber: currentPage,
-            color: activeColor,
-            opacity: activeOpacity,
-            strokeWidth: activeStrokeWidth,
-            filled: false,
-            rect: ann.rect,
-          })
+      if ((activeTool === 'rectangle' || activeTool === 'ellipse') && (drawingAnnotation as { rect?: { width: number; height: number } }).rect) {
+        const r = (drawingAnnotation as { rect: { x: number; y: number; width: number; height: number } }).rect
+        if (r.width > 4 && r.height > 4) {
+          addAnnotation({ type: activeTool, pageNumber: currentPage, color: activeColor, opacity: activeOpacity, strokeWidth: activeStrokeWidth, filled: false, rect: r } as Omit<Annotation, 'id' | 'createdAt' | 'updatedAt'>)
         }
       } else if (activeTool === 'arrow') {
-        const ann = drawingAnnotation as any
-        const dx = ann.end?.x - ann.start?.x
-        const dy = ann.end?.y - ann.start?.y
+        const a = drawingAnnotation as { start: Point; end: Point }
+        const dx = a.end.x - a.start.x, dy = a.end.y - a.start.y
         if (Math.sqrt(dx * dx + dy * dy) > 10) {
-          addAnnotation({
-            type: 'arrow',
-            pageNumber: currentPage,
-            color: activeColor,
-            opacity: activeOpacity,
-            strokeWidth: activeStrokeWidth,
-            start: ann.start,
-            end: ann.end,
-          })
+          addAnnotation({ type: 'arrow', pageNumber: currentPage, color: activeColor, opacity: activeOpacity, strokeWidth: activeStrokeWidth, start: a.start, end: a.end } as Omit<Annotation, 'id' | 'createdAt' | 'updatedAt'>)
         }
       } else if (activeTool === 'freehand') {
-        const ann = drawingAnnotation as any
-        if (ann.points?.length > 3) {
-          addAnnotation({
-            type: 'freehand',
-            pageNumber: currentPage,
-            color: activeColor,
-            opacity: activeOpacity,
-            strokeWidth: activeStrokeWidth,
-            points: ann.points,
-          })
+        const f = drawingAnnotation as { points?: Point[] }
+        if ((f.points?.length ?? 0) > 3) {
+          addAnnotation({ type: 'freehand', pageNumber: currentPage, color: activeColor, opacity: activeOpacity, strokeWidth: activeStrokeWidth, points: f.points! } as Omit<Annotation, 'id' | 'createdAt' | 'updatedAt'>)
         }
       }
     }
-
     setDrawingAnnotation(null)
     setDragStart(null)
   }
 
-  const pageAnnotations = annotations.filter(a => a.pageNumber === currentPage)
-  const isInteractive = activeTool !== 'select' && activeTool !== 'pan'
-
   if (!activeDoc) return null
-
+  const pageAnnotations = annotations.filter((a) => a.pageNumber === currentPage)
   const scaledWidth = pageSize.width > 0 ? pageSize.width * zoom : undefined
 
   return (
     <div className="flex flex-col h-full overflow-hidden">
-      <div
-        ref={containerRef}
-        className="flex-1 overflow-auto"
-        data-tool={activeTool}
-        style={{ background: 'var(--canvas-bg)' }}
-      >
-        <div
-          className="flex justify-center py-8 min-h-full"
-          onMouseDown={handleMouseDown}
-          onMouseMove={handleMouseMove}
-          onMouseUp={handleMouseUp}
-          onMouseLeave={handleMouseUp}
-        >
+      <div ref={containerRef} className="flex-1 overflow-auto" data-tool={activeTool} style={{ background: 'var(--canvas-bg)' }}>
+        <div className="flex justify-center py-8 min-h-full" onMouseDown={handleMouseDown} onMouseMove={handleMouseMove} onMouseUp={handleMouseUp} onMouseLeave={handleMouseUp}>
           <div className="relative shadow-2xl" style={{ width: scaledWidth }}>
             {activeDoc.type === 'pdf' ? (
-              <Document
-                file={activeDoc.url}
-                onLoadSuccess={onDocumentLoadSuccess}
-                loading={<LoadingPage />}
-                error={<ErrorPage />}
-              >
+              <Document file={activeDoc.url} onLoadSuccess={onDocumentLoadSuccess} loading={<LoadingPage />} error={<ErrorPage />}>
                 <Page
                   pageNumber={currentPage}
                   scale={zoom}
@@ -261,8 +169,6 @@ export function CanvasArea() {
                 draggable={false}
               />
             )}
-
-            {/* Annotation overlay */}
             {pageSize.width > 0 && (
               <AnnotationLayer
                 annotations={pageAnnotations}
@@ -270,20 +176,13 @@ export function CanvasArea() {
                 pageSize={pageSize}
                 zoom={zoom}
                 activeTool={activeTool}
-                interactive={isInteractive}
+                interactive={activeTool !== 'select' && activeTool !== 'pan'}
               />
             )}
           </div>
         </div>
       </div>
-
-      {numPages > 1 && (
-        <PageNav
-          current={currentPage}
-          total={numPages}
-          onPageChange={setCurrentPage}
-        />
-      )}
+      {numPages > 1 && <PageNav current={currentPage} total={numPages} onPageChange={setCurrentPage} />}
     </div>
   )
 }

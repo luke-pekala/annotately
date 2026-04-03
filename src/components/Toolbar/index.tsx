@@ -2,8 +2,7 @@ import { useState } from 'react'
 import {
   MousePointer2, Hand, Highlighter, StickyNote,
   Square, Circle, ArrowRight, PenLine, Type, Eraser,
-  Underline, Strikethrough, ZoomIn, ZoomOut, RotateCcw,
-  Minus, Plus,
+  Underline, Strikethrough, Minus, Plus,
 } from 'lucide-react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { useStore } from '@/store'
@@ -14,7 +13,6 @@ interface ToolItem {
   icon: React.ReactNode
   label: string
   shortcut: string
-  group?: string
 }
 
 const TOOLS: ToolItem[] = [
@@ -34,7 +32,7 @@ const SHAPE_TOOLS: ToolItem[] = [
   { id: 'rectangle', icon: <Square size={16} />, label: 'Rectangle', shortcut: 'R' },
   { id: 'ellipse', icon: <Circle size={16} />, label: 'Ellipse', shortcut: 'E' },
   { id: 'arrow', icon: <ArrowRight size={16} />, label: 'Arrow', shortcut: 'A' },
-  { id: 'freehand', icon: <PenLine size={16} />, label: 'Draw', shortcut: 'P' },
+  { id: 'freehand', icon: <PenLine size={16} />, label: 'Draw', shortcut: 'F' },
 ]
 
 const UTIL_TOOLS: ToolItem[] = [
@@ -42,32 +40,17 @@ const UTIL_TOOLS: ToolItem[] = [
 ]
 
 const ACCENT_COLORS = [
-  '#fbbf24', // amber
-  '#f87171', // coral
-  '#34d399', // emerald
-  '#60a5fa', // blue
-  '#a78bfa', // violet
-  '#f472b6', // pink
-  '#ffffff', // white
+  '#fbbf24', '#f87171', '#34d399', '#60a5fa', '#a78bfa', '#f472b6', '#ffffff',
 ]
 
-function ToolButton({ tool, active, onClick }: {
-  tool: ToolItem
-  active: boolean
-  onClick: () => void
-}) {
+function ToolButton({ tool, active, onClick }: { tool: ToolItem; active: boolean; onClick: () => void }) {
   const [showTooltip, setShowTooltip] = useState(false)
 
   return (
     <div className="relative" onMouseEnter={() => setShowTooltip(true)} onMouseLeave={() => setShowTooltip(false)}>
-      <button
-        onClick={onClick}
-        className={active ? 'tool-btn-active' : 'tool-btn'}
-        aria-label={tool.label}
-      >
+      <button onClick={onClick} className={active ? 'tool-btn-active' : 'tool-btn'} aria-label={tool.label}>
         {tool.icon}
       </button>
-
       <AnimatePresence>
         {showTooltip && (
           <motion.div
@@ -79,9 +62,7 @@ function ToolButton({ tool, active, onClick }: {
           >
             <div className="glass rounded-md px-2 py-1 whitespace-nowrap flex items-center gap-2">
               <span className="text-xs text-[var(--text-primary)]">{tool.label}</span>
-              <kbd className="text-[10px] bg-white/10 text-[var(--text-secondary)] px-1 py-0.5 rounded font-mono">
-                {tool.shortcut}
-              </kbd>
+              <kbd className="text-[10px] bg-white/10 text-[var(--text-secondary)] px-1 py-0.5 rounded font-mono">{tool.shortcut}</kbd>
             </div>
           </motion.div>
         )}
@@ -91,65 +72,30 @@ function ToolButton({ tool, active, onClick }: {
 }
 
 export function Toolbar() {
-  const {
-    activeTool,
-    activeColor,
-    activeStrokeWidth,
-    zoom,
-    setActiveTool,
-    setActiveColor,
-    setActiveStrokeWidth,
-    zoomIn,
-    zoomOut,
-    zoomReset,
-  } = useStore()
+  const { activeTool, activeColor, activeStrokeWidth, zoom, setActiveTool, setActiveColor, setActiveStrokeWidth, zoomIn, zoomOut, zoomReset } = useStore()
 
   return (
     <aside className="flex flex-col items-center w-12 py-3 gap-1 border-r border-[var(--border)] bg-[var(--surface)] flex-shrink-0 overflow-y-auto no-scrollbar z-20">
-      {/* Navigation tools */}
       {TOOLS.map((tool) => (
-        <ToolButton
-          key={tool.id}
-          tool={tool}
-          active={activeTool === tool.id}
-          onClick={() => setActiveTool(tool.id)}
-        />
+        <ToolButton key={tool.id} tool={tool} active={activeTool === tool.id} onClick={() => setActiveTool(tool.id)} />
       ))}
 
       <div className="divider w-6 mx-auto" />
 
-      {/* Annotation tools */}
       {ANNOTATION_TOOLS.map((tool) => (
-        <ToolButton
-          key={tool.id}
-          tool={tool}
-          active={activeTool === tool.id}
-          onClick={() => setActiveTool(tool.id)}
-        />
+        <ToolButton key={tool.id} tool={tool} active={activeTool === tool.id} onClick={() => setActiveTool(tool.id)} />
       ))}
 
       <div className="divider w-6 mx-auto" />
 
-      {/* Shape tools */}
       {SHAPE_TOOLS.map((tool) => (
-        <ToolButton
-          key={tool.id}
-          tool={tool}
-          active={activeTool === tool.id}
-          onClick={() => setActiveTool(tool.id)}
-        />
+        <ToolButton key={tool.id} tool={tool} active={activeTool === tool.id} onClick={() => setActiveTool(tool.id)} />
       ))}
 
       <div className="divider w-6 mx-auto" />
 
-      {/* Util tools */}
       {UTIL_TOOLS.map((tool) => (
-        <ToolButton
-          key={tool.id}
-          tool={tool}
-          active={activeTool === tool.id}
-          onClick={() => setActiveTool(tool.id)}
-        />
+        <ToolButton key={tool.id} tool={tool} active={activeTool === tool.id} onClick={() => setActiveTool(tool.id)} />
       ))}
 
       <div className="flex-1" />
@@ -181,34 +127,21 @@ export function Toolbar() {
             key={w}
             onClick={() => setActiveStrokeWidth(w)}
             title={`Stroke ${w}px`}
-            className={`w-7 h-6 flex items-center justify-center rounded transition-all duration-150 ${
-              activeStrokeWidth === w ? 'bg-[var(--accent-dim)]' : 'hover:bg-white/5'
-            }`}
+            className={`w-7 h-6 flex items-center justify-center rounded transition-all duration-150 ${activeStrokeWidth === w ? 'bg-[var(--accent-dim)]' : 'hover:bg-white/5'}`}
           >
-            <div
-              className="bg-[var(--text-secondary)] rounded-full"
-              style={{ width: 14, height: w + 0.5 }}
-            />
+            <div className="bg-[var(--text-secondary)] rounded-full" style={{ width: 14, height: w + 0.5 }} />
           </button>
         ))}
       </div>
 
       <div className="divider w-6 mx-auto" />
 
-      {/* Zoom controls */}
-      <button onClick={zoomIn} className="tool-btn" title="Zoom in (Ctrl++)">
-        <Plus size={14} />
-      </button>
-      <button
-        onClick={zoomReset}
-        title="Reset zoom (Ctrl+0)"
-        className="text-[10px] text-[var(--text-secondary)] hover:text-[var(--text-primary)] transition-colors font-mono cursor-pointer w-9 text-center py-0.5 rounded hover:bg-white/5"
-      >
+      {/* Zoom */}
+      <button onClick={zoomIn} className="tool-btn" title="Zoom in"><Plus size={14} /></button>
+      <button onClick={zoomReset} title="Reset zoom" className="text-[10px] text-[var(--text-secondary)] hover:text-[var(--text-primary)] transition-colors font-mono cursor-pointer w-9 text-center py-0.5 rounded hover:bg-white/5">
         {Math.round(zoom * 100)}%
       </button>
-      <button onClick={zoomOut} className="tool-btn" title="Zoom out (Ctrl+-)">
-        <Minus size={14} />
-      </button>
+      <button onClick={zoomOut} className="tool-btn" title="Zoom out"><Minus size={14} /></button>
     </aside>
   )
 }

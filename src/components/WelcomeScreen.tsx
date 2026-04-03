@@ -55,7 +55,7 @@ export function WelcomeScreen() {
           transition-all duration-200 group
           ${isDragOver
             ? 'border-[var(--accent)] bg-[var(--accent-dim)] scale-[1.02]'
-            : 'border-[var(--border-strong)] hover:border-[var(--accent)]/50 hover:bg-white/2'
+            : 'border-[var(--border-strong)] hover:border-[var(--accent)]/50 hover:bg-white/5'
           }
         `}
       >

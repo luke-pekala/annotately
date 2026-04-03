@@ -1,10 +1,7 @@
 import { useRef } from 'react'
-import {
-  Upload, Download, Undo2, Redo2, PanelRight, ChevronDown, FileText, Image, Trash2,
-} from 'lucide-react'
-import { motion } from 'framer-motion'
+import { Upload, Download, Undo2, Redo2, PanelRight, FileText, Image } from 'lucide-react'
 import { useStore, selectActiveDocument, selectCurrentAnnotations } from '@/store'
-import { exportAnnotations, isImageFile, isPDFFile, readFileAsDataURL } from '@/utils'
+import { exportAnnotations, isPDFFile, readFileAsDataURL } from '@/utils'
 import type { DocumentFile } from '@/types'
 
 export function Header() {
@@ -15,9 +12,13 @@ export function Header() {
     sidebarOpen,
     undoStack,
     redoStack,
+    zoom,
     setSidebarOpen,
     undo,
     redo,
+    zoomIn,
+    zoomOut,
+    zoomReset,
     addDocument,
     setActiveDocument,
     removeDocument,
@@ -29,21 +30,10 @@ export function Header() {
   const handleFileOpen = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0]
     if (!file) return
-
     const url = await readFileAsDataURL(file)
     const docType: DocumentFile['type'] = isPDFFile(file) ? 'pdf' : 'image'
-
-    addDocument({
-      name: file.name,
-      type: docType,
-      url,
-      pageCount: docType === 'image' ? 1 : 0,
-    })
+    addDocument({ name: file.name, type: docType, url, pageCount: docType === 'image' ? 1 : 0 })
     e.target.value = ''
-  }
-
-  const handleExport = () => {
-    exportAnnotations(annotations, activeDoc)
   }
 
   return (
@@ -59,7 +49,7 @@ export function Header() {
           <circle cx="22" cy="22" r="5" fill="var(--accent)" />
           <path d="M20.5 22h3M22 20.5v3" stroke="#0d0d1a" strokeWidth="1.5" strokeLinecap="round" />
         </svg>
-        <span className="font-display font-700 text-sm tracking-tight text-[var(--text-primary)]">
+        <span className="font-display font-bold text-sm tracking-tight text-[var(--text-primary)]">
           Annotately
         </span>
       </div>
@@ -81,81 +71,60 @@ export function Header() {
               }
             `}
           >
-            {doc.type === 'pdf' ? (
-              <FileText size={12} className="flex-shrink-0" />
-            ) : (
-              <Image size={12} className="flex-shrink-0" />
-            )}
+            {doc.type === 'pdf' ? <FileText size={12} className="flex-shrink-0" /> : <Image size={12} className="flex-shrink-0" />}
             <span className="truncate">{doc.name}</span>
             <span
               onClick={(e) => { e.stopPropagation(); removeDocument(doc.id) }}
-              className="opacity-0 group-hover:opacity-100 ml-0.5 p-0.5 rounded hover:bg-red-500/20 hover:text-red-400 transition-all"
+              className="opacity-0 group-hover:opacity-100 ml-0.5 p-0.5 rounded hover:bg-red-500/20 hover:text-red-400 transition-all cursor-pointer"
             >
               ×
             </span>
           </button>
         ))}
         {documents.length === 0 && (
-          <span className="text-xs text-[var(--text-tertiary)] px-1">
-            No documents open
-          </span>
+          <span className="text-xs text-[var(--text-tertiary)] px-1">No documents open</span>
         )}
       </div>
 
       {/* Actions */}
       <div className="flex items-center gap-1 flex-shrink-0">
-        <button
-          onClick={undo}
-          disabled={!undoStack.length}
-          title="Undo (Ctrl+Z)"
-          className="tool-btn disabled:opacity-30 disabled:cursor-not-allowed"
-        >
+        <button onClick={undo} disabled={!undoStack.length} title="Undo (Ctrl+Z)" className="tool-btn disabled:opacity-30 disabled:cursor-not-allowed">
           <Undo2 size={15} />
         </button>
-        <button
-          onClick={redo}
-          disabled={!redoStack.length}
-          title="Redo (Ctrl+Shift+Z)"
-          className="tool-btn disabled:opacity-30 disabled:cursor-not-allowed"
-        >
+        <button onClick={redo} disabled={!redoStack.length} title="Redo (Ctrl+Shift+Z)" className="tool-btn disabled:opacity-30 disabled:cursor-not-allowed">
           <Redo2 size={15} />
         </button>
 
         <div className="w-px h-5 bg-[var(--border)] mx-1" />
 
+        <button onClick={zoomOut} title="Zoom out" className="tool-btn text-xs font-mono">−</button>
+        <button onClick={zoomReset} title="Reset zoom" className="text-xs text-[var(--text-secondary)] hover:text-[var(--text-primary)] transition-colors font-mono cursor-pointer w-10 text-center">
+          {Math.round(zoom * 100)}%
+        </button>
+        <button onClick={zoomIn} title="Zoom in" className="tool-btn text-xs font-mono">+</button>
+
+        <div className="w-px h-5 bg-[var(--border)] mx-1" />
+
         {activeDoc && (
-          <button onClick={handleExport} className="btn-secondary text-xs gap-1.5" title="Export annotations">
+          <button onClick={() => exportAnnotations(annotations, activeDoc)} className="btn-secondary text-xs gap-1.5" title="Export annotations">
             <Download size={13} />
             Export
           </button>
         )}
 
-        <button
-          onClick={() => fileInputRef.current?.click()}
-          className="btn-primary text-xs gap-1.5"
-        >
+        <button onClick={() => fileInputRef.current?.click()} className="btn-primary text-xs gap-1.5">
           <Upload size={13} />
           Open File
         </button>
 
         <div className="w-px h-5 bg-[var(--border)] mx-1" />
 
-        <button
-          onClick={() => setSidebarOpen(!sidebarOpen)}
-          title="Toggle sidebar"
-          className={sidebarOpen ? 'tool-btn-active' : 'tool-btn'}
-        >
+        <button onClick={() => setSidebarOpen(!sidebarOpen)} title="Toggle sidebar" className={sidebarOpen ? 'tool-btn-active' : 'tool-btn'}>
           <PanelRight size={15} />
         </button>
       </div>
 
-      <input
-        ref={fileInputRef}
-        type="file"
-        accept=".pdf,image/*"
-        className="hidden"
-        onChange={handleFileOpen}
-      />
+      <input ref={fileInputRef} type="file" accept=".pdf,image/*" className="hidden" onChange={handleFileOpen} />
     </header>
   )
 }

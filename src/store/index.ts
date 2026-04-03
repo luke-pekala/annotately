@@ -10,25 +10,18 @@ import type {
 } from '@/types'
 
 interface AnnotationActions {
-  // Document actions
   addDocument: (doc: Omit<DocumentFile, 'id' | 'createdAt'>) => string
   removeDocument: (id: string) => void
   setActiveDocument: (id: string | null) => void
-
-  // Annotation actions
   addAnnotation: (annotation: Omit<Annotation, 'id' | 'createdAt' | 'updatedAt'>) => string
   updateAnnotation: (id: string, updates: Partial<Annotation>) => void
   removeAnnotation: (id: string) => void
   selectAnnotation: (id: string | null) => void
   clearAnnotations: (docId?: string) => void
-
-  // Tool actions
   setActiveTool: (tool: ToolType) => void
   setActiveColor: (color: AnnotationColor) => void
   setActiveOpacity: (opacity: number) => void
   setActiveStrokeWidth: (width: number) => void
-
-  // View actions
   setZoom: (zoom: number) => void
   zoomIn: () => void
   zoomOut: () => void
@@ -36,8 +29,6 @@ interface AnnotationActions {
   setCurrentPage: (page: number) => void
   setSidebarOpen: (open: boolean) => void
   setSidebarTab: (tab: 'annotations' | 'pages' | 'comments') => void
-
-  // History
   undo: () => void
   redo: () => void
   snapshot: () => void
@@ -45,15 +36,9 @@ interface AnnotationActions {
 
 type Store = AnnotationStore & AnnotationActions
 
-const getDocAnnotations = (state: AnnotationStore) => {
-  if (!state.activeDocumentId) return []
-  return state.annotations[state.activeDocumentId] ?? []
-}
-
 export const useStore = create<Store>()(
   persist(
     (set, get) => ({
-      // Initial state
       annotations: {},
       selectedAnnotationId: null,
       activeTool: 'select',
@@ -69,7 +54,6 @@ export const useStore = create<Store>()(
       undoStack: [],
       redoStack: [],
 
-      // Document actions
       addDocument: (doc) => {
         const id = uuidv4()
         set((state) => ({
@@ -82,7 +66,7 @@ export const useStore = create<Store>()(
       },
       removeDocument: (id) => {
         set((state) => {
-          const { [id]: _, ...rest } = state.annotations
+          const { [id]: _removed, ...rest } = state.annotations
           return {
             documents: state.documents.filter((d) => d.id !== id),
             annotations: rest,
@@ -92,7 +76,6 @@ export const useStore = create<Store>()(
       },
       setActiveDocument: (id) => set({ activeDocumentId: id, currentPage: 1 }),
 
-      // Annotation actions
       addAnnotation: (annotation) => {
         const id = uuidv4()
         const now = Date.now()
@@ -141,18 +124,14 @@ export const useStore = create<Store>()(
       clearAnnotations: (docId) => {
         const targetId = docId ?? get().activeDocumentId
         if (!targetId) return
-        set((state) => ({
-          annotations: { ...state.annotations, [targetId]: [] },
-        }))
+        set((state) => ({ annotations: { ...state.annotations, [targetId]: [] } }))
       },
 
-      // Tool actions
       setActiveTool: (tool) => set({ activeTool: tool }),
       setActiveColor: (color) => set({ activeColor: color }),
       setActiveOpacity: (opacity) => set({ activeOpacity: opacity }),
       setActiveStrokeWidth: (width) => set({ activeStrokeWidth: width }),
 
-      // View actions
       setZoom: (zoom) => set({ zoom: Math.max(0.25, Math.min(4, zoom)) }),
       zoomIn: () => set((s) => ({ zoom: Math.min(4, Math.round((s.zoom + 0.25) * 4) / 4) })),
       zoomOut: () => set((s) => ({ zoom: Math.max(0.25, Math.round((s.zoom - 0.25) * 4) / 4) })),
@@ -161,14 +140,11 @@ export const useStore = create<Store>()(
       setSidebarOpen: (open) => set({ sidebarOpen: open }),
       setSidebarTab: (tab) => set({ sidebarTab: tab }),
 
-      // History
       snapshot: () => {
         const docId = get().activeDocumentId
         if (!docId) return
         const current = [...(get().annotations[docId] ?? [])]
-        set((state) => ({
-          undoStack: [...state.undoStack.slice(-19), current],
-        }))
+        set((state) => ({ undoStack: [...state.undoStack.slice(-19), current] }))
       },
       undo: () => {
         const docId = get().activeDocumentId
