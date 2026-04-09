@@ -1,36 +1,60 @@
 # Annotately
 
-> A modern, precision annotation tool for PDFs and images. Built with React 18, TypeScript, Zustand, and Tailwind CSS.
+> A browser-based PDF and image annotation tool. Open a file, pick a tool, and annotate with precision — highlights, notes, shapes, freehand drawing, and more. No upload required, no server needed.
 
-[![Deploy to GitHub Pages](https://github.com/luke-pekala/Annotately/actions/workflows/deploy.yml/badge.svg)](https://github.com/luke-pekala/Annotately/actions/workflows/deploy.yml)
+[![Deploy to GitHub Pages](https://github.com/luke-pekala/annotately/actions/workflows/deploy.yml/badge.svg)](https://github.com/luke-pekala/Annotately/actions/workflows/deploy.yml)
 
-**Live demo:** https://luke-pekala.github.io/Annotately/
+**Live App** — [luke-pekala.github.io/annotately](https://luke-pekala.github.io/annotately/)
+
+---
+
+## What It Does
+
+Annotately lets you annotate PDFs and images entirely in the browser. Open a file via drag & drop or the file picker, choose a tool from the sidebar, and start marking up your document. All annotation data persists across sessions via `localStorage` and can be exported as JSON.
+
+It supports two document types:
+
+- **PDF** — multi-page navigation, page selector, scroll-to-zoom
+- **Image** — PNG, JPG, WebP, GIF, SVG
+
+Annotation tools available:
+
+- Highlight, Underline, Strikethrough (text markup)
+- Sticky Notes with editable text
+- Rectangle & Ellipse shapes
+- Arrow
+- Freehand drawing
+- Text labels
+- Eraser
+
+Additional features: click-to-select & inline comment editing, annotation search & filter sidebar, undo/redo (up to 20 steps), zoom controls, color picker (7 presets), stroke width selector, and JSON export.
+
+---
+
+## Stack
+
+- React 18 · TypeScript · Vite 5
+- Zustand (with `persist` middleware for localStorage)
+- react-pdf + pdfjs-dist (PDF rendering)
+- Tailwind CSS v3 · Framer Motion · lucide-react
+- Deploys automatically via GitHub Actions → GitHub Pages
 
 ---
 
 ## Features
 
-- **PDF annotation** — powered by `react-pdf` / `pdfjs-dist`; multi-page navigation with page selector
-- **Image annotation** — PNG, JPG, WebP, GIF, SVG support
-- **Annotation tools:**
-  - Highlight, Underline, Strikethrough (text markup)
-  - Sticky Notes with editable text
-  - Rectangle & Ellipse shapes
-  - Arrow
-  - Freehand drawing
-  - Text labels
-  - Eraser
-- **Selection & editing** — click to select, inline comment editing
-- **Sidebar** with tabs: Annotations, Pages, Comments; search & filter
-- **Undo / Redo** (up to 20 steps)
-- **Zoom** — scroll-to-zoom (Ctrl+Wheel), zoom controls, reset
-- **Color picker** — 7 preset colours, per-annotation colour
-- **Stroke width** — 3 sizes
-- **Export** — JSON export of all annotation data
-- **Keyboard shortcuts** (see below)
+- **PDF & image support** — open any PDF or raster/vector image via drag & drop
+- **10 annotation tools** — from text markup to freehand drawing
+- **Sidebar** with Annotations, Pages, and Comments tabs; search & filter
 - **Persistent state** — annotations survive page refresh via `localStorage`
-- **Drag & drop** file open
-- **Dark theme** — designed dark-first with a refined ink/amber palette
+- **Undo / Redo** — up to 20 steps (`Ctrl/⌘+Z` / `Ctrl/⌘+Shift+Z`)
+- **Zoom** — scroll-to-zoom (`Ctrl+Wheel`), zoom controls, reset
+- **Color picker** — 7 preset colours with per-annotation colour support
+- **Export** — download all annotation data as a `.json` file
+- **Keyboard shortcuts** — full shortcut set for every tool
+- **Dark-first design** — refined ink/amber palette
+
+---
 
 ## Keyboard Shortcuts
 
@@ -38,12 +62,12 @@
 |---|---|
 | `V` | Select tool |
 | `H` | Pan tool |
-| `N` | Note |
+| `N` | Sticky Note |
 | `R` | Rectangle |
 | `E` | Ellipse |
 | `A` | Arrow |
 | `F` | Freehand draw |
-| `T` | Text |
+| `T` | Text label |
 | `X` | Eraser |
 | `Ctrl/⌘ + Z` | Undo |
 | `Ctrl/⌘ + Shift + Z` | Redo |
@@ -53,30 +77,9 @@
 
 ---
 
-## Tech Stack
+## Local Development
 
-| Layer | Choice |
-|---|---|
-| Framework | React 18 + TypeScript |
-| Build tool | Vite 5 |
-| State | Zustand (with `persist` middleware) |
-| PDF rendering | react-pdf + pdfjs-dist |
-| Styling | Tailwind CSS v3 |
-| Animation | Framer Motion |
-| Icons | lucide-react |
-| Fonts | Syne (display) + DM Sans (body) |
-| Hotkeys | react-hotkeys-hook |
-
----
-
-## Getting Started
-
-### Prerequisites
-
-- Node.js ≥ 18
-- npm ≥ 9
-
-### Install & run locally
+Requires Node.js ≥ 18 and npm ≥ 9.
 
 ```bash
 git clone https://github.com/luke-pekala/Annotately.git
@@ -85,62 +88,27 @@ npm install
 npm run dev
 ```
 
-Open http://localhost:5173/Annotately/
-
-### Build for production
+Open [http://localhost:5173/annotately/](http://localhost:5173/annotately/)
 
 ```bash
-npm run build
-npm run preview   # preview the production build locally
+npm run build       # production build
+npm run preview     # preview the production build locally
 ```
 
 ---
 
 ## Deployment
 
-### Option 1 — GitHub Pages (recommended, automatic)
-
-The repo ships with a GitHub Actions workflow (`.github/workflows/deploy.yml`) that:
-1. Runs type-check and build on every push to `main`
-2. Deploys the `dist/` folder to GitHub Pages automatically
+The repo includes a GitHub Actions workflow that builds and deploys to GitHub Pages on every push to `main`.
 
 **One-time setup:**
-1. Push the code to GitHub (`git push origin main`)
-2. In your repo → **Settings → Pages**
+
+1. Push the repo to GitHub
+2. Go to **Settings → Pages**
 3. Under *Source*, select **GitHub Actions**
-4. On the next push to `main` the site deploys automatically to:  
-   `https://luke-pekala.github.io/Annotately/`
+4. The next push to `main` deploys to `https://luke-pekala.github.io/annotately/` automatically
 
-### Option 2 — Vercel
-
-```bash
-npm i -g vercel
-vercel
-```
-
-Set the *Output Directory* to `dist` and *Build Command* to `npm run build`.  
-Change `base` in `vite.config.ts` from `/Annotately/` to `/`.
-
-### Option 3 — Netlify
-
-Drag & drop the `dist/` folder into https://app.netlify.com/drop  
-Or connect your GitHub repo and set build command `npm run build`, publish dir `dist`.  
-Change `base` in `vite.config.ts` to `/`.
-
-### Option 4 — Docker
-
-```dockerfile
-FROM node:20-alpine AS builder
-WORKDIR /app
-COPY package*.json ./
-RUN npm ci
-COPY . .
-RUN npm run build
-
-FROM nginx:alpine
-COPY --from=builder /app/dist /usr/share/nginx/html
-EXPOSE 80
-```
+For Vercel or Netlify deployments, set the build command to `npm run build`, output/publish directory to `dist`, and update `base` in `vite.config.ts` from `/annotately/` to `/`.
 
 ---
 
@@ -148,39 +116,22 @@ EXPOSE 80
 
 ```
 Annotately/
-├── .github/
-│   └── workflows/
-│       └── deploy.yml          # CI/CD → GitHub Pages
+├── .github/workflows/deploy.yml   # CI/CD → GitHub Pages
 ├── public/
-│   └── favicon.svg
 ├── src/
 │   ├── components/
-│   │   ├── Canvas/
-│   │   │   ├── AnnotationLayer.tsx  # SVG annotation renderer
-│   │   │   ├── CanvasArea.tsx       # Main canvas with PDF/image + event handling
-│   │   │   └── PageNav.tsx          # PDF page navigation bar
-│   │   ├── Sidebar/
-│   │   │   └── index.tsx            # Sidebar: annotations, pages, comments tabs
-│   │   ├── Toolbar/
-│   │   │   └── index.tsx            # Vertical tool palette
-│   │   ├── Canvas.tsx               # Re-export
-│   │   ├── DropZone.tsx             # Re-export
-│   │   ├── Header.tsx               # Top bar: logo, doc tabs, undo/redo, zoom, export
-│   │   ├── WelcomeScreen.tsx        # Empty-state drop zone
-│   │   └── index.ts                 # Barrel exports
+│   │   ├── Canvas/                # SVG annotation renderer, canvas area, page nav
+│   │   ├── Sidebar/               # Annotations / pages / comments tabs
+│   │   ├── Toolbar/               # Vertical tool palette
+│   │   ├── Header.tsx             # Logo, doc tabs, undo/redo, zoom, export
+│   │   └── WelcomeScreen.tsx      # Empty-state drop zone
 │   ├── hooks/
-│   │   ├── useAnnotationDraw.ts     # Drawing state machine
-│   │   └── useFileOpen.ts           # File open helper
-│   ├── store/
-│   │   └── index.ts                 # Zustand store + selectors
-│   ├── styles/
-│   │   └── globals.css              # Tailwind + custom CSS vars + utilities
-│   ├── types/
-│   │   └── index.ts                 # All TypeScript types
-│   ├── utils/
-│   │   └── index.ts                 # Helpers: export, format, color
-│   ├── App.tsx
-│   └── main.tsx
+│   │   ├── useAnnotationDraw.ts   # Drawing state machine
+│   │   └── useFileOpen.ts         # File open helper
+│   ├── store/index.ts             # Zustand store + selectors
+│   ├── styles/globals.css         # Tailwind + CSS vars + utilities
+│   ├── types/index.ts             # All TypeScript types
+│   └── utils/index.ts             # Export, format, color helpers
 ├── index.html
 ├── package.json
 ├── tailwind.config.js
@@ -189,10 +140,6 @@ Annotately/
 ```
 
 ---
-
-## Contributing
-
-PRs welcome! Please open an issue first for major changes.
 
 ## License
 
