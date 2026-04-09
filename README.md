@@ -143,4 +143,4 @@ Annotately/
 
 ## License
 
-MIT © Luke Pękała
+MIT
