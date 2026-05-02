@@ -83,6 +83,14 @@ export function CanvasArea() {
       setIsDragging(false)
       setDragStart(null)
     }
+    if (activeTool === 'text') {
+      addAnnotation({
+        type: 'text', pageNumber: currentPage, color: activeColor,
+        opacity: 1, position: pt, text: 'Text', fontSize: 16, fontWeight: 'normal',
+      } as Omit<Annotation, 'id' | 'createdAt' | 'updatedAt'>)
+      setIsDragging(false)
+      setDragStart(null)
+    }
   }
 
   const handleMouseMove = (e: React.MouseEvent) => {
