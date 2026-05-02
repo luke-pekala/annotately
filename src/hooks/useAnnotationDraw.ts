@@ -40,6 +40,11 @@ export function useAnnotationDraw(
       dragStart.current = null
       setDrawState((s) => ({ ...s, isDragging: false }))
     }
+    if (activeTool === 'text') {
+      addAnnotation({ type: 'text', pageNumber: currentPage, color: activeColor, opacity: 1, position: pt, text: 'Text', fontSize: 16, fontWeight: 'normal' } as Omit<Annotation, 'id' | 'createdAt' | 'updatedAt'>)
+      dragStart.current = null
+      setDrawState((s) => ({ ...s, isDragging: false }))
+    }
   }, [activeTool, getPagePoint, currentPage, activeColor, addAnnotation])
 
   const handleMouseMove = useCallback((e: React.MouseEvent) => {
