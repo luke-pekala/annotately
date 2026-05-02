@@ -1,4 +1,4 @@
-import { useCallback } from 'react'
+import { useCallback, useState } from 'react'
 import { useStore } from '@/store'
 import { hexToRgba } from '@/utils'
 import type { Annotation, ToolType } from '@/types'
@@ -20,7 +20,8 @@ export function AnnotationLayer({
   activeTool,
   interactive,
 }: AnnotationLayerProps) {
-  const { selectAnnotation, selectedAnnotationId, removeAnnotation } = useStore()
+  const { selectAnnotation, selectedAnnotationId, removeAnnotation, updateAnnotation } = useStore()
+  const [editingId, setEditingId] = useState<string | null>(null)
 
   const handleAnnotationClick = useCallback(
     (e: React.MouseEvent, id: string) => {
@@ -32,6 +33,25 @@ export function AnnotationLayer({
       }
     },
     [activeTool, selectAnnotation, removeAnnotation]
+  )
+
+  const handleAnnotationDoubleClick = useCallback(
+    (e: React.MouseEvent, id: string, type: string) => {
+      e.stopPropagation()
+      if (type === 'text' || type === 'note') {
+        setEditingId(id)
+        selectAnnotation(id)
+      }
+    },
+    [selectAnnotation]
+  )
+
+  const handleTextCommit = useCallback(
+    (id: string, value: string) => {
+      updateAnnotation(id, { text: value })
+      setEditingId(null)
+    },
+    [updateAnnotation]
   )
 
   const w = pageSize.width * zoom
@@ -56,12 +76,14 @@ export function AnnotationLayer({
           key={ann.id}
           annotation={ann}
           selected={selectedAnnotationId === ann.id}
+          editing={editingId === ann.id}
           onClick={(e) => handleAnnotationClick(e, ann.id)}
+          onDoubleClick={(e) => handleAnnotationDoubleClick(e, ann.id, ann.type)}
+          onTextCommit={(value) => handleTextCommit(ann.id, value)}
           activeTool={activeTool}
         />
       ))}
 
-      {/* Currently drawing */}
       {drawingAnnotation && <DrawingShape annotation={drawingAnnotation} />}
     </svg>
   )
@@ -70,17 +92,24 @@ export function AnnotationLayer({
 function AnnotationShape({
   annotation,
   selected,
+  editing,
   onClick,
+  onDoubleClick,
+  onTextCommit,
   activeTool,
 }: {
   annotation: Annotation
   selected: boolean
+  editing: boolean
   onClick: (e: React.MouseEvent) => void
+  onDoubleClick: (e: React.MouseEvent) => void
+  onTextCommit: (value: string) => void
   activeTool: ToolType
 }) {
   const isEraser = activeTool === 'eraser'
   const baseProps = {
     onClick,
+    onDoubleClick,
     style: {
       cursor: isEraser ? 'cell' : activeTool === 'select' ? 'pointer' : 'default',
       pointerEvents: 'all' as const,
@@ -132,6 +161,7 @@ function AnnotationShape({
         markerEnd={`url(#arrowhead)`}
         style={{ color: hexToRgba(color, opacity), pointerEvents: 'all', cursor: baseProps.style.cursor }}
         onClick={onClick}
+        onDoubleClick={onDoubleClick}
         strokeLinecap="round"
       />
     )
@@ -169,13 +199,33 @@ function AnnotationShape({
         >
           !
         </text>
-        {selected && ann.text && (
-          <foreignObject x={ann.position.x + 14} y={ann.position.y - 20} width={160} height={80}>
-            <div
-              className="bg-[var(--surface-3)] border border-[var(--border-strong)] rounded-lg p-2 text-xs text-[var(--text-primary)] shadow-xl"
-            >
-              {ann.text}
-            </div>
+        {selected && (
+          <foreignObject x={ann.position.x + 14} y={ann.position.y - 20} width={180} height={90}>
+            {editing ? (
+              <textarea
+                autoFocus
+                defaultValue={ann.text}
+                onBlur={(e) => onTextCommit(e.currentTarget.value)}
+                onKeyDown={(e) => { if (e.key === 'Escape') onTextCommit((e.target as HTMLTextAreaElement).value) }}
+                style={{
+                  width: '100%', height: '100%', background: 'var(--surface-3)',
+                  border: '1px solid var(--border-strong)', borderRadius: 8,
+                  padding: 8, fontSize: 12, color: 'var(--text-primary)',
+                  resize: 'none', outline: 'none', fontFamily: 'DM Sans, sans-serif',
+                }}
+              />
+            ) : (
+              <div
+                style={{
+                  background: 'var(--surface-3)', border: '1px solid var(--border-strong)',
+                  borderRadius: 8, padding: 8, fontSize: 12,
+                  color: 'var(--text-primary)', cursor: 'text',
+                  minHeight: 32,
+                }}
+              >
+                {ann.text || <span style={{ opacity: 0.4 }}>Double-click to edit</span>}
+              </div>
+            )}
           </foreignObject>
         )}
       </g>
@@ -184,17 +234,52 @@ function AnnotationShape({
 
   if (annotation.type === 'text') {
     const ann = annotation as any
+    if (!ann.position) return null
     return (
-      <text
-        x={ann.position?.x} y={ann.position?.y}
-        fill={hexToRgba(color, opacity)}
-        fontSize={ann.fontSize ?? 14}
-        fontWeight={ann.fontWeight ?? 'normal'}
-        fontFamily="DM Sans, sans-serif"
-        {...baseProps}
-      >
-        {ann.text}
-      </text>
+      <g {...baseProps}>
+        {editing ? (
+          <foreignObject x={ann.position.x} y={ann.position.y - ann.fontSize} width={200} height={ann.fontSize * 2 + 16}>
+            <input
+              autoFocus
+              defaultValue={ann.text}
+              onBlur={(e) => onTextCommit(e.currentTarget.value)}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter' || e.key === 'Escape') {
+                  onTextCommit((e.target as HTMLInputElement).value)
+                }
+              }}
+              style={{
+                width: '100%', background: 'var(--surface-3)',
+                border: '1px solid var(--border-strong)', borderRadius: 4,
+                padding: '2px 6px', fontSize: ann.fontSize ?? 16,
+                color: ann.color, fontWeight: ann.fontWeight ?? 'normal',
+                fontFamily: 'DM Sans, sans-serif', outline: 'none',
+              }}
+            />
+          </foreignObject>
+        ) : (
+          <text
+            x={ann.position.x} y={ann.position.y}
+            fill={hexToRgba(color, opacity)}
+            fontSize={ann.fontSize ?? 14}
+            fontWeight={ann.fontWeight ?? 'normal'}
+            fontFamily="DM Sans, sans-serif"
+            style={{ cursor: activeTool === 'select' ? 'pointer' : 'default', pointerEvents: 'all' }}
+          >
+            {ann.text}
+          </text>
+        )}
+        {selected && !editing && (
+          <rect
+            x={ann.position.x - 2} y={ann.position.y - (ann.fontSize ?? 14) - 2}
+            width={ann.text?.length * ((ann.fontSize ?? 14) * 0.6) + 4}
+            height={(ann.fontSize ?? 14) + 6}
+            fill="none" stroke={hexToRgba(color, 0.5)}
+            strokeWidth={1} strokeDasharray="3 2" rx={2}
+            style={{ pointerEvents: 'none' }}
+          />
+        )}
+      </g>
     )
   }
 
@@ -210,7 +295,6 @@ function AnnotationShape({
           if (annotation.type === 'underline') {
             return <line key={i} x1={r.x} y1={r.y + r.height} x2={r.x + r.width} y2={r.y + r.height} stroke={hexToRgba(color, opacity)} strokeWidth={1.5} />
           }
-          // strikethrough
           const mid = r.y + r.height / 2
           return <line key={i} x1={r.x} y1={mid} x2={r.x + r.width} y2={mid} stroke={hexToRgba(color, opacity)} strokeWidth={1.5} />
         })}
