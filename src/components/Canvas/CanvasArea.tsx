@@ -7,7 +7,6 @@ import { AnnotationLayer } from './AnnotationLayer'
 import { PageNav } from './PageNav'
 import type { Point, Annotation } from '@/types'
 
-// Fix PDF worker for Vite + GitHub Pages (avoids base-path issues)
 pdfjs.GlobalWorkerOptions.workerSrc = `https://unpkg.com/pdfjs-dist@${pdfjs.version}/build/pdf.worker.min.mjs`
 
 export function CanvasArea() {
@@ -18,6 +17,8 @@ export function CanvasArea() {
   const [dragStart, setDragStart] = useState<Point | null>(null)
   const [drawingAnnotation, setDrawingAnnotation] = useState<Partial<Annotation> | null>(null)
   const lastPan = useRef<Point | null>(null)
+  const clickTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const clickCount = useRef(0)
 
   const {
     activeTool, activeColor, activeOpacity, activeStrokeWidth,
@@ -64,6 +65,22 @@ export function CanvasArea() {
     return { x: (e.clientX - rect.left) / zoom, y: (e.clientY - rect.top) / zoom }
   }
 
+  // Returns true if the click landed on an existing annotation element
+  const isClickOnAnnotation = (e: React.MouseEvent): boolean => {
+    const target = e.target as Element
+    return !!(
+      target.closest('[data-annotation]') ||
+      target.tagName === 'text' ||
+      target.tagName === 'circle' ||
+      target.tagName === 'rect' ||
+      target.tagName === 'ellipse' ||
+      target.tagName === 'path' ||
+      target.tagName === 'line' ||
+      target.tagName === 'foreignObject' ||
+      target.closest('foreignObject')
+    )
+  }
+
   const handleMouseDown = (e: React.MouseEvent) => {
     if (e.button !== 0) return
     if (activeTool === 'pan') {
@@ -72,9 +89,14 @@ export function CanvasArea() {
       return
     }
     if (activeTool === 'select' || activeTool === 'eraser') return
+
+    // Don't add a new annotation if clicking on an existing one
+    if (isClickOnAnnotation(e)) return
+
     const pt = getPagePoint(e)
     setDragStart(pt)
     setIsDragging(true)
+
     if (activeTool === 'note') {
       addAnnotation({
         type: 'note', pageNumber: currentPage, color: activeColor,
@@ -82,12 +104,22 @@ export function CanvasArea() {
       } as Omit<Annotation, 'id' | 'createdAt' | 'updatedAt'>)
       setIsDragging(false)
       setDragStart(null)
+      return
     }
+
     if (activeTool === 'text') {
-      addAnnotation({
-        type: 'text', pageNumber: currentPage, color: activeColor,
-        opacity: 1, position: pt, text: 'Text', fontSize: 16, fontWeight: 'normal',
-      } as Omit<Annotation, 'id' | 'createdAt' | 'updatedAt'>)
+      // Delay by 220ms to distinguish single click from double-click
+      clickCount.current += 1
+      if (clickTimer.current) clearTimeout(clickTimer.current)
+      clickTimer.current = setTimeout(() => {
+        if (clickCount.current === 1) {
+          addAnnotation({
+            type: 'text', pageNumber: currentPage, color: activeColor,
+            opacity: 1, position: pt, text: 'Text', fontSize: 16, fontWeight: 'normal',
+          } as Omit<Annotation, 'id' | 'createdAt' | 'updatedAt'>)
+        }
+        clickCount.current = 0
+      }, 220)
       setIsDragging(false)
       setDragStart(null)
     }
